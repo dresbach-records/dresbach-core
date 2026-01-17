@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Serviço da Aplicação Go
+  app:
+    build: .
+    container_name: go-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - APP_PORT=8080
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=dresbach
+      - DB_USER=dresbach_app
+      - DB_PASSWORD=Ma596220@
+
+  # Serviço do Banco de Dados MySQL
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: dresbach
+      MYSQL_USER: dresbach_app
+      MYSQL_PASSWORD: SENHA_FORTE_AQUI
+      MYSQL_ROOT_PASSWORD: root_password_muito_forte
+    ports:
+      # A porta 3306 do host é mapeada para a 3306 do contêiner (opcional, bom para debug)
+      - "3306:3306"
+    volumes:
+      # Garante que os dados do MySQL persistam entre reinicializações do contêiner
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
