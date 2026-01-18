@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"log"
 
 	"hosting-backend/internal/models"
 	"hosting-backend/internal/utils"
     "hosting-backend/internal/auth"
+	"hosting-backend/internal/services/asaas"
 )
 
 // RegisterPayload define a estrutura de dados para o cadastro de um novo cliente.
@@ -16,6 +18,7 @@ type RegisterPayload struct {
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
+	CpfCnpj   string `json:"cpf_cnpj"`
 }
 
 // LoginPayload define a estrutura de dados para o login de um cliente.
@@ -66,7 +69,39 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "Erro ao criar usuário", http.StatusInternalServerError)
 			return
 		}
-		newUser.ID = int(userID)
+		
+		// Criar o novo cliente
+		newClient := models.Client{
+			UserID:      int(userID),
+			ContactName: payload.FirstName + " " + payload.LastName,
+			Email:       payload.Email,
+			CpfCnpj:     payload.CpfCnpj,
+		}
+
+		// Criar cliente no Asaas
+		asaasClient := asaas.NewAsaasClient()
+		customerRequest := asaas.CustomerRequest{
+			Name:    newClient.ContactName,
+			CpfCnpj: newClient.CpfCnpj,
+			Email:   newClient.Email,
+		}
+
+		asaasCustomer, err := asaasClient.CreateCustomer(customerRequest)
+		if err != nil {
+			log.Printf("Erro ao criar cliente no Asaas: %v", err)
+			// Mesmo que a criação no Asaas falhe, o usuário é criado no nosso sistema.
+			// O erro será logado, e poderemos tratar a sincronização depois.
+		} else {
+			newClient.AsaasCustomerID = sql.NullString{String: asaasCustomer.ID, Valid: true}
+		}
+
+		// Salvar o cliente no banco de dados
+		_, err = db.Exec("INSERT INTO clients (user_id, contact_name, email, cpf_cnpj, asaas_customer_id) VALUES (?, ?, ?, ?, ?)", 
+			newClient.UserID, newClient.ContactName, newClient.Email, newClient.CpfCnpj, newClient.AsaasCustomerID)
+		if err != nil {
+			http.Error(w, "Erro ao salvar cliente", http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(newUser) // Não envia o hash da senha

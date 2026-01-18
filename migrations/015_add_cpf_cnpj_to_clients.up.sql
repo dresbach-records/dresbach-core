@@ -1,0 +1,1 @@
+ALTER TABLE clients ADD COLUMN cpf_cnpj VARCHAR(14) UNIQUE;

@@ -41,7 +41,7 @@ func main() {
 
 	logger.Log.Info("Iniciando a API de Hospedagem...")
 
-	config.InitStripe()
+	config.InitAsaas() // Adiciona a inicialização do Asaas
 
 	db, err := database.ConnectMySQL()
 	if err != nil {
@@ -83,6 +83,8 @@ func main() {
 	clientRouter.HandleFunc("/api/my-services", client.ListMyServicesHandler(db)).Methods("GET")
 	clientRouter.HandleFunc("/api/my-services/{id:[0-9]+}", client.GetServiceDetailsHandler(db)).Methods("GET")
 	clientRouter.HandleFunc("/api/my-invoices", client.ListMyInvoicesHandler(db)).Methods("GET")
+	clientRouter.HandleFunc("/api/checkout", client.CheckoutHandler(db)).Methods("POST")
+
 
 	// --- Rotas de Administração ---
 	adminRouter := r.PathPrefix("/admin").Subrouter()
@@ -113,7 +115,7 @@ func main() {
 	adminRouter.HandleFunc("/updates/analyze", admin.AnalyzeUpdateHandler()).Methods("POST")
 
 	// --- Rotas de Webhook (Externas) ---
-	r.HandleFunc("/webhooks/stripe", webhooks.StripeWebhookHandler(db)).Methods("POST")
+	r.HandleFunc("/webhooks/asaas", webhooks.AsaasWebhookHandler(db)).Methods("POST")
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {
