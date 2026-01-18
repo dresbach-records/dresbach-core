@@ -97,6 +97,10 @@ func main() {
 	adminRouter.HandleFunc("/financials/balance", admin.GetBalanceHandler(db)).Methods("GET")
 	adminRouter.HandleFunc("/financials/transactions", admin.GetTransactionsHandler(db)).Methods("GET")
 
+	// Rotas de Configurações Fiscais (Admin)
+	adminRouter.HandleFunc("/fiscal/settings", admin.GetFiscalSettingsHandler(db)).Methods("GET")
+	adminRouter.HandleFunc("/fiscal/settings", admin.UpdateFiscalSettingsHandler(db)).Methods("PUT")
+
 	// Rotas de gerenciamento de serviços (Admin)
 	adminRouter.HandleFunc("/services", admin.CreateServiceHandler(db)).Methods("POST")
 	adminRouter.HandleFunc("/services/{id:[0-9]+}/suspend", admin.SuspendServiceHandler(db)).Methods("PUT")
