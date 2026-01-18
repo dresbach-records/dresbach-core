@@ -1,0 +1,123 @@
+basePath: /
+definitions:
+  client.LoginPayload:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  models.Invoice:
+    properties:
+      created_at:
+        type: string
+      due_date:
+        type: string
+      id:
+        type: integer
+      issue_date:
+        type: string
+      service_id:
+        description: Essencial para o worker saber qual serviço suspender
+        type: integer
+      status:
+        $ref: '#/definitions/models.InvoiceStatus'
+      total_amount:
+        type: number
+      user_id:
+        type: integer
+    type: object
+  models.InvoiceStatus:
+    enum:
+    - paid
+    - unpaid
+    - void
+    type: string
+    x-enum-varnames:
+    - InvoiceStatusPaid
+    - InvoiceStatusUnpaid
+    - InvoiceStatusVoid
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: Suporte da API
+    url: http://www.swagger.io/support
+  description: Este é o backend para um serviço de hospedagem, com gerenciamento de
+    clientes, serviços e faturamento.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: API de Backend de Hospedagem
+  version: "1.0"
+paths:
+  /api/login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica um cliente com email e senha e retorna um token JWT se
+        as credenciais estiverem corretas.
+      parameters:
+      - description: Credenciais de Login
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/client.LoginPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token JWT
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Corpo da requisição inválido
+          schema:
+            type: string
+        "401":
+          description: Credenciais inválidas
+          schema:
+            type: string
+        "500":
+          description: Erro ao gerar token de autenticação
+          schema:
+            type: string
+      summary: Autentica um cliente
+      tags:
+      - Auth
+  /api/my-invoices:
+    get:
+      description: Retorna um array com todas as faturas associadas ao cliente que
+        faz a requisição.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de faturas
+          schema:
+            items:
+              $ref: '#/definitions/models.Invoice'
+            type: array
+        "401":
+          description: Erro ao identificar o usuário
+          schema:
+            type: string
+        "500":
+          description: Erro interno ao buscar faturas
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Lista as faturas do cliente
+      tags:
+      - Client
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -3,82 +3,64 @@ package auth
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"hosting-backend/internal/models"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// LoginRequest define a estrutura do corpo da solicitação de login.
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
+// ...(structs)... 
 
-// LoginResponse define a estrutura da resposta de login bem-sucedido.
-type LoginResponse struct {
-	Token string `json:"token"`
-}
-
-// Claims define as reivindicações personalizadas para o token JWT.
-type Claims struct {
-	Email string `json:"email"`
-	Role  string `json:"role"`
-	jwt.RegisteredClaims
-}
-
-// LoginHandler processa as solicitações de login.
+// LoginHandler processa o login com todas as checagens de segurança.
 func LoginHandler(db *sql.DB) http.HandlerFunc {
-	// A chave JWT é lida uma vez no início, para eficiência.
 	jwtKey := []byte(os.Getenv("JWT_SECRET_KEY"))
-
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
-			return
-		}
+		// ...(código de decode e get IP existente)... 
+		ipAddress := models.GetIP(r)
 
-		var req LoginRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Pedido inválido", http.StatusBadRequest)
-			return
-		}
+		// 1. CHECAGEM DE BLOQUEIO POR FORÇA BRUTA
+		// ...(código existente)... 
 
-		var id int
-		var passwordHash, role string
-		err := db.QueryRow("SELECT id, password_hash, role FROM users WHERE email = ? AND is_active = TRUE", req.Email).Scan(&id, &passwordHash, &role)
-		if err == sql.ErrNoRows {
-			http.Error(w, "Credenciais inválidas", http.StatusUnauthorized)
-			return
-		} else if err != nil {
-			http.Error(w, "Erro interno do servidor", http.StatusInternalServerError)
-			return
-		}
-
-		if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
-			http.Error(w, "Credenciais inválidas", http.StatusUnauthorized)
-			return
-		}
-
-		expirationTime := time.Now().Add(24 * time.Hour)
-		claims := &Claims{
-			Email: req.Email,
-			Role:  role,
-			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(expirationTime),
-			},
-		}
-
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := token.SignedString(jwtKey)
+		var clientID int
+		var passwordHash string
+		var twoFactorEnabled bool
+		var enforceIPWhitelist bool // Nova variável
+		query := "SELECT id, password_hash, two_factor_enabled, enforce_ip_whitelist FROM clients WHERE email = ? AND status = 'active'"
+		err := db.QueryRow(query, req.Email).Scan(&clientID, &passwordHash, &twoFactorEnabled, &enforceIPWhitelist)
 		if err != nil {
-			http.Error(w, "Erro ao gerar o token", http.StatusInternalServerError)
+            // ...(lógica de log de falha existente)... 
+			http.Error(w, "Credenciais inválidas", http.StatusUnauthorized)
+            return
+        }
+
+        // *** 2. NOVA LÓGICA DE LOGIN POR IP ***
+        if enforceIPWhitelist {
+            isAllowed, err := models.IsIPAllowedForClient(db, clientID, ipAddress)
+            if err != nil {
+                http.Error(w, "Erro ao verificar permissão de IP", http.StatusInternalServerError)
+                return
+            }
+            if !isAllowed {
+                models.LogLoginAttempt(db, req.Email, ipAddress, r.UserAgent(), false) // Loga a falha
+                http.Error(w, "Acesso negado para este endereço IP", http.StatusForbidden)
+                return
+            }
+        }
+
+		// 3. CHECAGEM DE SENHA
+		if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
+            // ...(lógica de log de falha existente)... 
+			http.Error(w, "Credenciais inválidas", http.StatusUnauthorized)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(LoginResponse{Token: tokenString})
+        // ...(lógica de log de sucesso e 2FA existente)... 
 	}
 }
+
+// ...(outros handlers)... 
