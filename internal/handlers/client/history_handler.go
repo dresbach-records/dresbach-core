@@ -14,7 +14,7 @@ import (
 func GetLoginHistoryHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Obter claims do contexto, que foi adicionado pelo middleware de autenticação
-		claims, ok := middleware.GetClaims(r.Context())
+		userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 		if !ok {
 			http.Error(w, "Token inválido ou não encontrado", http.StatusUnauthorized)
 			return
@@ -28,7 +28,7 @@ func GetLoginHistoryHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Buscar o histórico usando o UserID do token
-		history, err := models.GetLoginHistoryForClient(db, claims.UserID, limit)
+		history, err := models.GetLoginHistoryForClient(db, userID, limit)
 		if err != nil {
 			http.Error(w, "Erro ao buscar histórico de login", http.StatusInternalServerError)
 			return

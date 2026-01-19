@@ -7,13 +7,6 @@ import (
 	"time"
 )
 
-// BillingCycle define os períodos de faturamento possíveis.
-type BillingCycle string
-
-const (
-	Monthly  BillingCycle = "monthly"
-	Annually BillingCycle = "annually"
-)
 
 // Product representa um plano de hospedagem que pode ser vendido.
 type Product struct {

@@ -71,9 +71,9 @@ func generateDueInvoices(db *sql.DB) {
 
 		// 5. Calcular a próxima data de vencimento com base no ciclo de faturamento.
 		var newNextDueDate time.Time
-		if service.BillingCycle == models.BillingCycleMonthly {
+		if service.BillingCycle == models.Monthly {
 			newNextDueDate = service.NextDueDate.AddDate(0, 1, 0) // Adiciona 1 mês
-		} else if service.BillingCycle == models.BillingCycleAnnually {
+		} else if service.BillingCycle == models.Annually {
 			newNextDueDate = service.NextDueDate.AddDate(1, 0, 0) // Adiciona 1 ano
 		} else {
 			log.Printf("[Invoicing Worker] AVISO: Ciclo de faturamento desconhecido ('%s') para o serviço #%d. A data da fatura não será atualizada.", service.BillingCycle, service.ID)

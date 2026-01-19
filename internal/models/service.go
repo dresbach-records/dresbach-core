@@ -15,13 +15,6 @@ const (
 	ServiceStatusPending   ServiceStatus = "pending"
 )
 
-// BillingCycle define os possíveis ciclos de faturamento.
-type BillingCycle string
-
-const (
-	BillingCycleMonthly  BillingCycle = "monthly"
-	BillingCycleAnnually BillingCycle = "annually"
-)
 
 // Service representa um serviço contratado por um cliente.
 type Service struct {

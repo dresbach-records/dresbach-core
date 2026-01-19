@@ -20,7 +20,11 @@ type AddAllowedIPRequest struct {
 // AddAllowedIPHandler adiciona um novo IP à lista branca do cliente.
 func AddAllowedIPHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, _ := middleware.GetClaims(r.Context())
+		userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+		if !ok {
+			http.Error(w, "Usuário não autenticado", http.StatusUnauthorized)
+			return
+		}
 
 		var req AddAllowedIPRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -30,7 +34,7 @@ func AddAllowedIPHandler(db *sql.DB) http.HandlerFunc {
 
 		// (Validação adicional do formato do IP pode ser adicionada aqui)
 
-		_, err := models.AddAllowedIP(db, claims.UserID, req.IPAddress, req.Description)
+		_, err := models.AddAllowedIP(db, userID, req.IPAddress, req.Description)
 		if err != nil {
 			// (Verificar erro de violação de chave única para mensagem mais amigável)
 			http.Error(w, "Erro ao adicionar IP", http.StatusInternalServerError)
@@ -44,9 +48,13 @@ func AddAllowedIPHandler(db *sql.DB) http.HandlerFunc {
 // GetAllowedIPsHandler lista todos os IPs da lista branca do cliente.
 func GetAllowedIPsHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, _ := middleware.GetClaims(r.Context())
+		userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+		if !ok {
+			http.Error(w, "Usuário não autenticado", http.StatusUnauthorized)
+			return
+		}
 
-		ips, err := models.GetAllowedIPsForClient(db, claims.UserID)
+		ips, err := models.GetAllowedIPsForClient(db, userID)
 		if err != nil {
 			http.Error(w, "Erro ao buscar IPs", http.StatusInternalServerError)
 			return
@@ -60,7 +68,12 @@ func GetAllowedIPsHandler(db *sql.DB) http.HandlerFunc {
 // DeleteAllowedIPHandler remove um IP da lista branca do cliente.
 func DeleteAllowedIPHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, _ := middleware.GetClaims(r.Context())
+		userID, ok := r.Context().Value(middleware.UserIDKey).(int)
+		if !ok {
+			http.Error(w, "Usuário não autenticado", http.StatusUnauthorized)
+			return
+		}
+
 		ipIDStr := chi.URLParam(r, "ipID")
 		ipID, err := strconv.Atoi(ipIDStr)
 		if err != nil {
@@ -68,7 +81,7 @@ func DeleteAllowedIPHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		success, err := models.DeleteAllowedIP(db, claims.UserID, ipID)
+		success, err := models.DeleteAllowedIP(db, userID, ipID)
 		if err != nil {
 			http.Error(w, "Erro ao deletar IP", http.StatusInternalServerError)
 			return

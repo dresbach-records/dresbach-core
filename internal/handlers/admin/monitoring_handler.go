@@ -7,8 +7,6 @@ import (
 	"os"
 
 	"hosting-backend/internal/logger"
-
-	"github.com/sirupsen/logrus"
 )
 
 // LogEntry representa uma única entrada de log para ser exibida na UI.

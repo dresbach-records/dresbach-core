@@ -35,7 +35,9 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// loggingResponseWriter é um wrapper em torno de http.ResponseWriter que captura o status code.	ype loggingResponseWriter struct {
+// loggingResponseWriter é um wrapper em torno de http.ResponseWriter que captura o status code.
+
+type loggingResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
 }

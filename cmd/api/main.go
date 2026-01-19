@@ -1,11 +1,11 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 	"os"
 
 	"hosting-backend/internal/config"
-	"hosting-backend/internal/database"
 	_ "hosting-backend/docs" // Importa os docs gerados pelo swag
 	"hosting-backend/internal/handlers/admin"
 	"hosting-backend/internal/handlers/client"
@@ -14,12 +14,13 @@ import (
 	"hosting-backend/internal/handlers/webhooks"
 	"hosting-backend/internal/logger" // Importa nosso novo logger
 	"hosting-backend/internal/middleware"
-	"hosting-backend/internal/workers"
+	"hosting-backend/internal/services"
+	"hosting-backend/internal/utils"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/sirupsen/logrus"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // @title API de Backend de Hospedagem
@@ -41,20 +42,34 @@ func main() {
 
 	logger.Log.Info("Iniciando a API de Hospedagem...")
 
+	if err := utils.InitCrypto(); err != nil {
+		logger.Log.WithFields(logrus.Fields{
+			"module": "crypto",
+			"error":  err.Error(),
+		}).Fatal("Erro ao inicializar o módulo de criptografia")
+	}
+
 	config.InitAsaas() // Adiciona a inicialização do Asaas
 
-	db, err := database.ConnectMySQL()
-	if err != nil {
-		logger.Log.WithFields(logrus.Fields{
-			"module": "database",
-			"error":  err.Error(),
-		}).Fatal("Erro ao conectar no MySQL")
-	}
-	defer db.Close()
-	logger.Log.Info("Conexão com o banco de dados MySQL estabelecida com sucesso.")
+	// A conexão com o banco de dados foi comentada para o teste.
+	// db, err := database.ConnectMySQL()
+	// if err != nil {
+	// 	logger.Log.WithFields(logrus.Fields{
+	// 		"module": "database",
+	// 		"error":  err.Error(),
+	// 	}).Fatal("Erro ao conectar no MySQL")
+	// }
+	// defer db.Close()
+	var db *sql.DB // Declara db como nil para a compilação funcionar.
+	logger.Log.Info("Conexão com o banco de dados MySQL pulada para teste.")
 
-	go workers.GenerateInvoicesWorker(db)
-	go workers.SuspensionWorker(db)
+	// Instancia os serviços com um db nil.
+	clientService := services.NewClientService(db)
+	adminService := services.NewAdminService(db)
+
+	// Os workers foram comentados pois causariam pânico com um db nil.
+	// go workers.GenerateInvoicesWorker(db)
+	// go workers.SuspensionWorker(db)
 
 	r := mux.NewRouter()
 
@@ -78,22 +93,21 @@ func main() {
 
 	// --- Rotas da Área do Cliente (Protegidas por JWT) ---
 	clientRouter := r.PathPrefix("/").Subrouter()
-	clientRouter.Use(middleware.JWTAuthMiddleware)
+	clientRouter.Use(middleware.AuthMiddleware)
 	clientRouter.HandleFunc("/api/me", client.MeHandler(db)).Methods("GET")
-	clientRouter.HandleFunc("/api/my-services", client.ListMyServicesHandler(db)).Methods("GET")
+	clientRouter.HandleFunc("/api/my-services", client.GetServicesHandler(clientService)).Methods("GET")
 	clientRouter.HandleFunc("/api/my-services/{id:[0-9]+}", client.GetServiceDetailsHandler(db)).Methods("GET")
-	clientRouter.HandleFunc("/api/my-invoices", client.ListMyInvoicesHandler(db)).Methods("GET")
-	clientRouter.HandleFunc("/api/checkout", client.CheckoutHandler(db)).Methods("POST")
-
+	clientRouter.HandleFunc("/api/my-invoices", client.GetInvoicesHandler(clientService)).Methods("GET")
+	clientRouter.HandleFunc("//api/checkout", client.CheckoutHandler(db)).Methods("POST")
 
 	// --- Rotas de Administração ---
 	adminRouter := r.PathPrefix("/admin").Subrouter()
-	adminRouter.Use(middleware.JWTAuthMiddleware, middleware.RBACMiddleware(db), middleware.RequirePermission("admin"))
-	adminRouter.HandleFunc("/clients", admin.GetClientsHandler(db)).Methods("GET")
-	adminRouter.HandleFunc("/clients", admin.CreateClientHandler(db)).Methods("POST")
-	adminRouter.HandleFunc("/clients/{id:[0-a-z0-9]+}", admin.GetClientHandler(db)).Methods("GET")
-	adminRouter.HandleFunc("/clients/{id:[0-9]+}", admin.UpdateClientHandler(db)).Methods("PUT")
-	adminRouter.HandleFunc("/clients/{id:[0-9]+}", admin.DeleteClientHandler(db)).Methods("DELETE")
+	adminRouter.Use(middleware.AuthMiddleware, middleware.RBACMiddleware(db), middleware.RequirePermission("admin"))
+	adminRouter.HandleFunc("/clients", admin.GetClientsHandler(adminService)).Methods("GET")
+	adminRouter.HandleFunc("/clients", admin.CreateClientHandler(adminService)).Methods("POST")
+	adminRouter.HandleFunc("/clients/{id:[0-a-z0-9]+}", admin.GetClientHandler(adminService)).Methods("GET")
+	adminRouter.HandleFunc("/clients/{id:[0-9]+}", admin.UpdateClientHandler(adminService)).Methods("PUT")
+	adminRouter.HandleFunc("/clients/{id:[0-9]+}", admin.DeleteClientHandler(adminService)).Methods("DELETE")
 	adminRouter.HandleFunc("/domain-orders", admin.GetDomainOrdersHandler(db)).Methods("GET")
 	adminRouter.HandleFunc("/domain-orders/{id:[0-9]+}", admin.UpdateDomainOrderHandler(db)).Methods("PUT")
 	adminRouter.HandleFunc("/financials/balance", admin.GetBalanceHandler(db)).Methods("GET")
@@ -101,7 +115,7 @@ func main() {
 
 	// Rotas de Configurações Fiscais (Admin)
 	adminRouter.HandleFunc("/fiscal/settings", admin.GetFiscalSettingsHandler(db)).Methods("GET")
-	adminRouter.HandleFunc("/fiscal/settings", admin.UpdateFiscalSettingsHandler(db)).Methods("PUT")
+	adminRouter.HandleFunc("//fiscal/settings", admin.UpdateFiscalSettingsHandler(db)).Methods("PUT")
 
 	// Rotas de gerenciamento de serviços (Admin)
 	adminRouter.HandleFunc("/services", admin.CreateServiceHandler(db)).Methods("POST")
@@ -124,7 +138,7 @@ func main() {
 
 	logger.Log.WithField("port", port).Info("API rodando na porta")
 
-	err = http.ListenAndServe(":"+port, r)
+	err := http.ListenAndServe(":"+port, r)
 	if err != nil {
 		logger.Log.WithField("error", err.Error()).Fatal("Erro ao iniciar o servidor HTTP")
 	}

@@ -1,12 +1,11 @@
 package hostinger
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 )
 
 // Client é o cliente da API para interagir com os serviços da Hostinger.

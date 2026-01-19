@@ -40,7 +40,7 @@ func OrderDomainHandler(db *sql.DB) http.HandlerFunc {
 		domain := strings.ToLower(strings.TrimSpace(req.Domain))
 
 		// 2. Extrai o ID do cliente do token JWT
-		claims, ok := r.Context().Value(middleware.ClaimsKey).(*middleware.Claims)
+		userID, ok := r.Context().Value(middleware.UserIDKey).(int)
 		if !ok {
 			http.Error(w, "Falha ao obter dados do cliente", http.StatusUnauthorized)
 			return
@@ -63,7 +63,7 @@ func OrderDomainHandler(db *sql.DB) http.HandlerFunc {
 
 		// 5. Insere o pedido de domínio
 		orderRes, err := tx.Exec("INSERT INTO domain_orders (client_id, domain_name, document, status) VALUES (?, ?, ?, ?)",
-			claims.UserID, domain, req.Document, "pending_payment")
+			userID, domain, req.Document, "pending_payment")
 		if err != nil {
 			log.Printf("Erro ao inserir pedido de domínio: %v", err)
 			http.Error(w, "Erro ao processar seu pedido.", http.StatusInternalServerError)
@@ -75,7 +75,7 @@ func OrderDomainHandler(db *sql.DB) http.HandlerFunc {
 		now := time.Now()
 		dueDate := now.Add(7 * 24 * time.Hour) // Vencimento em 7 dias
 		invoiceRes, err := tx.Exec("INSERT INTO invoices (client_id, issue_date, due_date, total_amount, status) VALUES (?, ?, ?, ?, ?)",
-			claims.UserID, now, dueDate, domainRegistrationPrice, "unpaid")
+			userID, now, dueDate, domainRegistrationPrice, "unpaid")
 		if err != nil {
 			log.Printf("Erro ao criar fatura: %v", err)
 			http.Error(w, "Erro ao processar seu pedido.", http.StatusInternalServerError)
@@ -111,7 +111,7 @@ func OrderDomainHandler(db *sql.DB) http.HandlerFunc {
 
 		// 9. Gera a notificação para o admin (neste ponto, apenas um log)
 		log.Printf("### [ADMIN] NOVA PRIORIDADE: REGISTRO DE DOMÍNIO MANUAL ###")
-		log.Printf("### Cliente: %d | Domínio: %s | Documento: %s | Fatura: %d ###", claims.UserID, domain, req.Document, invoiceID)
+		log.Printf("### Cliente: %d | Domínio: %s | Documento: %s | Fatura: %d ###", userID, domain, req.Document, invoiceID)
 
 		// 10. Retorna sucesso para o cliente
 		w.Header().Set("Content-Type", "application/json")

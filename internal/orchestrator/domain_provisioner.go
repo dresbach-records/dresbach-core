@@ -60,9 +60,11 @@ func ProcessDomainProvisioning(db *sql.DB, domainID int) {
 	// O nome de usuário do cPanel precisa ser único, uma lógica para gerá-lo seria necessária
 	cpanelUsername := "user" + fmt.Sprintf("%d", domainID)
 	planName := "plano_default" // O nome do plano viria dos detalhes do serviço
+	// Em um cenário real, a senha deveria ser gerada de forma segura
+	tempPassword := "aVeryComplexP@ssw0rd!"
 
-	success, err := whmClient.CreateAccount(cpanelUsername, domain.DomainName, planName)
-	if err != nil || !success {
+	_, err = whmClient.CreateAccount(domain.DomainName, cpanelUsername, tempPassword, planName)
+	if err != nil {
 		finalizeAsFailed(db, domainID, "Falha na criação da conta WHM", err)
 		// *** PONTO CRÍTICO DE ROLLBACK LÓGICO ***
 		// Aqui, você adicionaria uma lógica para notificar a equipe ou tentar compensar a ação.

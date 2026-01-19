@@ -48,11 +48,11 @@ func GetBalanceHandler(db *sql.DB) http.HandlerFunc {
 		var availableAmount, pendingAmount int64
 		var currency string
 		if len(b.Available) > 0 {
-			availableAmount = b.Available[0].Value
+			availableAmount = b.Available[0].Amount
 			currency = string(b.Available[0].Currency)
 		}
 		if len(b.Pending) > 0 {
-			pendingAmount = b.Pending[0].Value
+			pendingAmount = b.Pending[0].Amount
 		}
 
 		response := BalanceResponse{
@@ -69,7 +69,7 @@ func GetBalanceHandler(db *sql.DB) http.HandlerFunc {
 func GetTransactionsHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		params := &stripe.BalanceTransactionListParams{}
-		params.SetLimit("100") // Busca as últimas 100 transações
+		params.Limit = stripe.Int64(100) // Busca as últimas 100 transações
 		i := balancetransaction.List(params)
 
 		var transactions []Transaction

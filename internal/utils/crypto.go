@@ -13,16 +13,19 @@ import (
 
 var encryptionKey []byte
 
-func init() {
+// InitCrypto initializes the encryption key from environment variables.
+// It must be called once at the start of the application.
+func InitCrypto() error {
 	keyStr := os.Getenv("ENCRYPTION_KEY")
-	if len(keyStr) != 64 { // Chave deve ter 32 bytes, que são 64 caracteres hex
-		panic("ENCRYPTION_KEY environment variable must be a 64-character hex string (32 bytes)")
+	if len(keyStr) != 64 { // A chave deve ter 32 bytes, que são 64 caracteres hex
+		return errors.New("ENCRYPTION_KEY environment variable must be a 64-character hex string (32 bytes)")
 	}
 	var err error
 	encryptionKey, err = hex.DecodeString(keyStr)
 	if err != nil {
-		panic("Failed to decode ENCRYPTION_KEY: " + err.Error())
+		return fmt.Errorf("failed to decode ENCRYPTION_KEY: %w", err)
 	}
+	return nil
 }
 
 // Encrypt criptografa dados usando AES-GCM.

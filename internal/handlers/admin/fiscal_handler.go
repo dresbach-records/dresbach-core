@@ -4,11 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"hosting-backend/internal/models"
-
-	"github.com/gorilla/mux"
 )
 
 // --- Funções de Acesso ao Banco de Dados (integradas no handler) ---

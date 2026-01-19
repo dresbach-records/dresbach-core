@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
+	"time"
 )
 
 // DomainEvent representa um registro na tabela `domain_events`.

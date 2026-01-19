@@ -6,17 +6,6 @@ import (
 	"time"
 )
 
-// BillingCycle define os ciclos de faturamento disponíveis.
-type BillingCycle string
-
-const (
-	Monthly      BillingCycle = "monthly"
-	Annually     BillingCycle = "annually"
-	Quarterly    BillingCycle = "quarterly"
-	Semiannually BillingCycle = "semiannually"
-	Biennially   BillingCycle = "biennially"
-)
-
 // PlanStatus define o status de visibilidade de um plano.
 type PlanStatus string
 

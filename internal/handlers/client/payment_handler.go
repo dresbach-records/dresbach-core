@@ -8,7 +8,6 @@ import (
 	"time"
 	"log"
 
-	"github.com/gorilla/mux"
 	"hosting-backend/internal/services/asaas"
 )
 

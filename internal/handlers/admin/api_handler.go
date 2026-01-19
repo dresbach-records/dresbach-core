@@ -55,12 +55,12 @@ func TestApiConnectionHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		provider := models.ApiProvider(chi.URLParam(r, "provider"))
 
-		apiKey, err := models.GetDecryptedApiKey(db, provider)
-		if err != nil {
-			models.UpdateApiTestResult(db, provider, err)
-			http.Error(w, "Chave de API não encontrada ou inativa", http.StatusNotFound)
-			return
-		}
+		// apiKey, err := models.GetDecryptedApiKey(db, provider)
+		// if err != nil {
+		// 	models.UpdateApiTestResult(db, provider, err)
+		// 	http.Error(w, "Chave de API não encontrada ou inativa", http.StatusNotFound)
+		// 	return
+		// }
 
 		// TODO: Implementar a lógica de teste real para cada provedor.
 		// Por exemplo, para o Stripe, fazer uma chamada simples como `stripe.Balance.Get()`

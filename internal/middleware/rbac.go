@@ -14,7 +14,7 @@ type ContextKey string
 // Chaves usadas para armazenar valores no contexto da requisição.
 const (
 	UserPermissionsKey ContextKey = "user_permissions"
-	UserIDKey          ContextKey = "user_id" // Deve corresponder à chave usada em auth.go
+	// UserIDKey          ContextKey = "user_id" // Movido para auth.go para evitar re-declaração
 )
 
 // RBACMiddleware carrega as permissões do usuário e as coloca no contexto.

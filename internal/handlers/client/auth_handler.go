@@ -3,13 +3,12 @@ package client
 import (
 	"database/sql"
 	"encoding/json"
-	"net/http"
 	"log"
+	"net/http"
 
 	"hosting-backend/internal/models"
-	"hosting-backend/internal/utils"
-    "hosting-backend/internal/auth"
 	"hosting-backend/internal/services/asaas"
+	"hosting-backend/internal/utils"
 )
 
 // RegisterPayload define a estrutura de dados para o cadastro de um novo cliente.
@@ -69,20 +68,20 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "Erro ao criar usuário", http.StatusInternalServerError)
 			return
 		}
-		
+
 		// Criar o novo cliente
 		newClient := models.Client{
 			UserID:      int(userID),
-			ContactName: payload.FirstName + " " + payload.LastName,
+			ContactName: sql.NullString{String: payload.FirstName + " " + payload.LastName, Valid: true},
 			Email:       payload.Email,
-			CpfCnpj:     payload.CpfCnpj,
+			CpfCnpj:     sql.NullString{String: payload.CpfCnpj, Valid: true},
 		}
 
 		// Criar cliente no Asaas
 		asaasClient := asaas.NewAsaasClient()
 		customerRequest := asaas.CustomerRequest{
-			Name:    newClient.ContactName,
-			CpfCnpj: newClient.CpfCnpj,
+			Name:    newClient.ContactName.String,
+			CpfCnpj: newClient.CpfCnpj.String,
 			Email:   newClient.Email,
 		}
 
@@ -96,7 +95,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Salvar o cliente no banco de dados
-		_, err = db.Exec("INSERT INTO clients (user_id, contact_name, email, cpf_cnpj, asaas_customer_id) VALUES (?, ?, ?, ?, ?)", 
+		_, err = db.Exec("INSERT INTO clients (user_id, contact_name, email, cpf_cnpj, asaas_customer_id) VALUES (?, ?, ?, ?, ?)",
 			newClient.UserID, newClient.ContactName, newClient.Email, newClient.CpfCnpj, newClient.AsaasCustomerID)
 		if err != nil {
 			http.Error(w, "Erro ao salvar cliente", http.StatusInternalServerError)
@@ -142,7 +141,7 @@ func LoginHandler(db *sql.DB, jwtSecret string) http.HandlerFunc {
 		}
 
 		// Gerar o token JWT para o cliente
-		token, err := auth.GenerateJWT(user.ID, "client", jwtSecret) // Usamos o скоpo "client"
+		token, err := utils.GenerateToken(user.ID, "client")
 		if err != nil {
 			http.Error(w, "Erro ao gerar token de autenticação", http.StatusInternalServerError)
 			return
