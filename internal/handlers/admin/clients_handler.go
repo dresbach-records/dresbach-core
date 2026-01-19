@@ -5,10 +5,51 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/mux"
 	"hosting-backend/internal/models"
 	"hosting-backend/internal/services"
-	"github.com/gorilla/mux"
 )
+
+// ProvisionRequest é a estrutura para a solicitação de criação e provisionamento de cliente.
+type ProvisionRequest struct {
+	Client   models.Client `json:"client"`
+	Domain   string        `json:"domain"`
+	Username string        `json:"username"`
+	Password string        `json:"password"`
+	Plan     string        `json:"plan"`
+}
+
+// CreateClientAndProvisionHandler lida com a criação de um cliente e o provisionamento de sua conta.
+func CreateClientAndProvisionHandler(adminService *services.AdminService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req ProvisionRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Pedido inválido: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Validação básica
+		if req.Client.Email == "" || req.Domain == "" || req.Username == "" || req.Password == "" || req.Plan == "" {
+			http.Error(w, "Campos obrigatórios ausentes no pedido", http.StatusBadRequest)
+			return
+		}
+
+		clientID, err := adminService.CreateClientAndProvisionAccount(&req.Client, req.Domain, req.Username, req.Plan, req.Password)
+		if err != nil {
+			// O erro do serviço já é bem descritivo.
+			http.Error(w, "Erro no processo de criação e provisionamento: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Retorna uma resposta de sucesso
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message":  "Cliente criado e conta provisionada com sucesso.",
+			"clientID": clientID,
+		})
+	}
+}
 
 // CreateClientHandler cria um novo cliente.
 func CreateClientHandler(adminService *services.AdminService) http.HandlerFunc {

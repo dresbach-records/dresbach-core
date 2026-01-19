@@ -6,16 +6,19 @@ import (
 	"os"
 
 	"hosting-backend/internal/config"
-	_ "hosting-backend/docs" // Importa os docs gerados pelo swag
+	"hosting-backend/internal/database" // Descomente para usar o banco de dados
+	_ "hosting-backend/docs"              // Importa os docs gerados pelo swag
 	"hosting-backend/internal/handlers/admin"
 	"hosting-backend/internal/handlers/client"
 	"hosting-backend/internal/handlers/domain"
 	"hosting-backend/internal/handlers/products"
 	"hosting-backend/internal/handlers/webhooks"
-	"hosting-backend/internal/logger" // Importa nosso novo logger
+	"hosting-backend/internal/logger"
 	"hosting-backend/internal/middleware"
+	"hosting-backend/internal/provisioning" // Importa o provisionador
 	"hosting-backend/internal/services"
 	"hosting-backend/internal/utils"
+	"hosting-backend/internal/workers" // Descomente para usar os workers
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -49,27 +52,35 @@ func main() {
 		}).Fatal("Erro ao inicializar o módulo de criptografia")
 	}
 
-	config.InitAsaas() // Adiciona a inicialização do Asaas
+	config.InitAsaas()
 
-	// A conexão com o banco de dados foi comentada para o teste.
-	// db, err := database.ConnectMySQL()
-	// if err != nil {
-	// 	logger.Log.WithFields(logrus.Fields{
-	// 		"module": "database",
-	// 		"error":  err.Error(),
-	// 	}).Fatal("Erro ao conectar no MySQL")
-	// }
-	// defer db.Close()
-	var db *sql.DB // Declara db como nil para a compilação funcionar.
-	logger.Log.Info("Conexão com o banco de dados MySQL pulada para teste.")
+	// Conexão com o banco de dados
+	db, err := database.ConnectMySQL()
+	if err != nil {
+		logger.Log.WithFields(logrus.Fields{
+			"module": "database",
+			"error":  err.Error(),
+		}).Fatal("Erro ao conectar no MySQL")
+	}
+	defer db.Close()
+	logger.Log.Info("Conexão com o banco de dados MySQL estabelecida com sucesso.")
 
-	// Instancia os serviços com um db nil.
+	// Inicializa o provisionador do WHM
+	whmProvisioner, err := provisioning.NewWhmProvisioner()
+	if err != nil {
+		logger.Log.WithFields(logrus.Fields{
+			"module": "provisioning",
+			"error":  err.Error(),
+		}).Fatal("Erro ao inicializar o provisionador do WHM")
+	}
+
+	// Instancia os serviços com o banco de dados e o provisionador
 	clientService := services.NewClientService(db)
-	adminService := services.NewAdminService(db)
+	adminService := services.NewAdminService(db, whmProvisioner) // Injeta o provisionador
 
-	// Os workers foram comentados pois causariam pânico com um db nil.
-	// go workers.GenerateInvoicesWorker(db)
-	// go workers.SuspensionWorker(db)
+	// Inicia os workers em goroutines
+	go workers.GenerateInvoicesWorker(db)
+	go workers.SuspensionWorker(db)
 
 	r := mux.NewRouter()
 
@@ -104,7 +115,11 @@ func main() {
 	adminRouter := r.PathPrefix("/admin").Subrouter()
 	adminRouter.Use(middleware.AuthMiddleware, middleware.RBACMiddleware(db), middleware.RequirePermission("admin"))
 	adminRouter.HandleFunc("/clients", admin.GetClientsHandler(adminService)).Methods("GET")
-	adminRouter.HandleFunc("/clients", admin.CreateClientHandler(adminService)).Methods("POST")
+
+	// Modifique esta rota para usar a nova função que também provisiona a conta
+	// A rota antiga admin.CreateClientHandler(adminService) pode ser mantida para casos onde apenas o registro no DB é necessário.
+	adminRouter.HandleFunc("/clients/provision", admin.CreateClientAndProvisionHandler(adminService)).Methods("POST")
+
 	adminRouter.HandleFunc("/clients/{id:[0-a-z0-9]+}", admin.GetClientHandler(adminService)).Methods("GET")
 	adminRouter.HandleFunc("/clients/{id:[0-9]+}", admin.UpdateClientHandler(adminService)).Methods("PUT")
 	adminRouter.HandleFunc("/clients/{id:[0-9]+}", admin.DeleteClientHandler(adminService)).Methods("DELETE")
@@ -138,7 +153,7 @@ func main() {
 
 	logger.Log.WithField("port", port).Info("API rodando na porta")
 
-	err := http.ListenAndServe(":"+port, r)
+	err = http.ListenAndServe(":"+port, r)
 	if err != nil {
 		logger.Log.WithField("error", err.Error()).Fatal("Erro ao iniciar o servidor HTTP")
 	}
