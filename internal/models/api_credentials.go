@@ -55,8 +55,8 @@ func UpsertApiCredential(db *sql.DB, provider ApiProvider, apiKey string, status
 		return err
 	}
 
-	query := `INSERT INTO api_credentials (provider, encrypted_key, status) VALUES (?, ?, ?)
-			   ON DUPLICATE KEY UPDATE encrypted_key = VALUES(encrypted_key), status = VALUES(status)`
+	query := `INSERT INTO api_credentials (provider, encrypted_key, status) VALUES ($1, $2, $3)
+			   ON CONFLICT (provider) DO UPDATE SET encrypted_key = EXCLUDED.encrypted_key, status = EXCLUDED.status`
 	_, err = db.Exec(query, provider, encryptedKey, status)
 	return err
 }
@@ -64,7 +64,7 @@ func UpsertApiCredential(db *sql.DB, provider ApiProvider, apiKey string, status
 // GetDecryptedApiKey busca e descriptografa uma chave de API para uso interno.
 func GetDecryptedApiKey(db *sql.DB, provider ApiProvider) (string, error) {
 	var encryptedKey string
-	query := `SELECT encrypted_key FROM api_credentials WHERE provider = ? AND status = 'active'`
+	query := `SELECT encrypted_key FROM api_credentials WHERE provider = $1 AND status = 'active'`
 	err := db.QueryRow(query, provider).Scan(&encryptedKey)
 	if err != nil {
 		return "", err
@@ -84,10 +84,10 @@ func UpdateApiTestResult(db *sql.DB, provider ApiProvider, testErr error) error 
 	var err error
 
 	if testErr != nil {
-		query = `UPDATE api_credentials SET last_test_at = NOW(), last_error = ? WHERE provider = ?`
+		query = `UPDATE api_credentials SET last_test_at = NOW(), last_error = $1 WHERE provider = $2`
 		_, err = db.Exec(query, testErr.Error(), provider)
 	} else {
-		query = `UPDATE api_credentials SET last_test_at = NOW(), last_error = NULL WHERE provider = ?`
+		query = `UPDATE api_credentials SET last_test_at = NOW(), last_error = NULL WHERE provider = $1`
 		_, err = db.Exec(query, provider)
 	}
 	return err

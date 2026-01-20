@@ -28,7 +28,7 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 		// 1. Buscar usuário pelo nome de usuário
 		// Esta query é um exemplo. Em uma aplicação real, você teria uma função no modelo como GetAdminUserByUsername.
 		var user models.AdminUser
-		query := `SELECT id, username, password, role_id FROM admin_users WHERE username = ?`
+		query := `SELECT id, username, password, role_id FROM admin_users WHERE username = $1`
 		row := db.QueryRow(query, payload.Username)
 		if err := row.Scan(&user.ID, &user.Username, &user.Password, &user.RoleID); err != nil {
 			if err == sql.ErrNoRows {
@@ -47,7 +47,7 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 
 		// 3. Buscar o nome da função (role)
 		var roleName string
-		db.QueryRow(`SELECT name FROM roles WHERE id = ?`, user.RoleID).Scan(&roleName)
+		db.QueryRow(`SELECT name FROM roles WHERE id = $1`, user.RoleID).Scan(&roleName)
 
 		// 4. Gerar o token JWT
 		token, err := utils.GenerateToken(user.ID, roleName)

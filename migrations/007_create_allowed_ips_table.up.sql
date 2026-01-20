@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS allowed_ips (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     client_id INT NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
     description VARCHAR(255) NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY (client_id, ip_address),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (client_id, ip_address),
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
 );
 

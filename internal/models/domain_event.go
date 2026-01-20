@@ -32,7 +32,7 @@ func LogDomainEvent(db *sql.DB, domainID int, eventType, message string, data in
 
 	stmt, err := db.Prepare(`
         INSERT INTO domain_events (domain_id, type, message, raw_data)
-        VALUES (?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4)
     `)
 	if err != nil {
 		return err
@@ -46,11 +46,11 @@ func LogDomainEvent(db *sql.DB, domainID int, eventType, message string, data in
 // HasEventOccurred verifica se um evento específico já ocorreu para um domínio.
 // Isso é chave para garantir a idempotência.
 func HasEventOccurred(db *sql.DB, domainID int, eventType string) (bool, error) {
-    var count int
-    query := "SELECT COUNT(*) FROM domain_events WHERE domain_id = ? AND type = ?"
-    err := db.QueryRow(query, domainID, eventType).Scan(&count)
-    if err != nil {
-        return false, err
-    }
-    return count > 0, nil
+	var count int
+	query := "SELECT COUNT(*) FROM domain_events WHERE domain_id = $1 AND type = $2"
+	err := db.QueryRow(query, domainID, eventType).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

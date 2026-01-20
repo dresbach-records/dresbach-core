@@ -18,7 +18,7 @@ const (
 type DomainStatus string
 
 const (
-	StatusPendingPayment     DomainStatus = "pending_payment"
+	StatusPendingPayment      DomainStatus = "pending_payment"
 	StatusPendingProvisioning DomainStatus = "pending_provisioning"
 	StatusActive              DomainStatus = "active"
 	StatusFailed              DomainStatus = "failed"
@@ -40,27 +40,30 @@ type Domain struct {
 	UpdatedAt         time.Time      `json:"updated_at"`
 }
 
-// CreateDomain cria um novo registro de domínio, geralmente no início do processo de compra.
-func CreateDomain(db *sql.DB, clientID, serviceID int, domainName string, domainType DomainType) (int64, error) {
-	stmt, err := db.Prepare(`
+// CreateDomain cria um novo registro de domínio e retorna o ID gerado.
+func CreateDomain(tx *sql.Tx, clientID, serviceID int, domainName string, domainType DomainType) (int, error) {
+	var domainID int
+	query := `
         INSERT INTO domains (client_id, service_id, domain_name, type, status)
-        VALUES (?, ?, ?, ?, ?)
-    `)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id
+    `
+	err := tx.QueryRow(query, clientID, serviceID, domainName, domainType, StatusPendingProvisioning).Scan(&domainID)
 	if err != nil {
 		return 0, err
 	}
-	defer stmt.Close()
-
-	res, err := stmt.Exec(clientID, serviceID, domainName, domainType, StatusPendingPayment)
-	if err != nil {
-		return 0, err
-	}
-	return res.LastInsertId()
+	return domainID, nil
 }
 
 // UpdateDomainStatus atualiza o status de um domínio.
-// Esta será uma função central no nosso orquestrador.
 func UpdateDomainStatus(db *sql.DB, domainID int, status DomainStatus) error {
-	_, err := db.Exec("UPDATE domains SET status = ? WHERE id = ?", status, domainID)
+	_, err := db.Exec("UPDATE domains SET status = $1 WHERE id = $2", status, domainID)
+	return err
+}
+
+// UpdateDomainProviderOrderID atualiza o ID do pedido no provedor.
+func UpdateDomainProviderOrderID(db *sql.DB, domainID int, provider, providerOrderID string) error {
+	query := "UPDATE domains SET provider = $1, provider_order_id = $2 WHERE id = $3"
+	_, err := db.Exec(query, provider, providerOrderID, domainID)
 	return err
 }

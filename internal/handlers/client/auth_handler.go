@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"hosting-backend/internal/models"
 	"hosting-backend/internal/services/asaas"
@@ -141,13 +142,27 @@ func LoginHandler(db *sql.DB, jwtSecret string) http.HandlerFunc {
 		}
 
 		// Gerar o token JWT para o cliente
-		token, err := utils.GenerateToken(user.ID, "client")
+		token, err := utils.GenerateToken(user.ID, "client", jwtSecret)
 		if err != nil {
 			http.Error(w, "Erro ao gerar token de autenticação", http.StatusInternalServerError)
 			return
 		}
 
+		// Configurar o cookie de autenticação
+		expiration := time.Now().Add(24 * time.Hour)
+		cookie := http.Cookie{
+			Name:     "auth_token",
+			Value:    token,
+			Expires:  expiration,
+			HttpOnly: true,
+			Secure:   true, // Em produção, deve ser true. Para dev, pode ser false.
+			Domain:   ".dresbachhosting.com.br",
+			Path:     "/",
+			SameSite: http.SameSiteLaxMode, // Lax é um bom default
+		}
+		http.SetCookie(w, &cookie)
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"token": token})
+		json.NewEncoder(w).Encode(map[string]string{"token": token, "status": "success"})
 	}
 }

@@ -47,8 +47,8 @@ func GetSiteSettings(db *sql.DB) (*SiteSettings, error) {
 // UpdateSiteSettings atualiza as configurações do site.
 func UpdateSiteSettings(db *sql.DB, s *SiteSettings) error {
 	query := `UPDATE site_settings SET
-		company_name = ?, slogan = ?, description = ?, phone_numbers = ?, whatsapp = ?,
-		institutional_email = ?, address = ?, social_links = ?, logo_url = ?, favicon_url = ?
+		company_name = $1, slogan = $2, description = $3, phone_numbers = $4, whatsapp = $5,
+		institutional_email = $6, address = $7, social_links = $8, logo_url = $9, favicon_url = $10
 	WHERE id = 1`
 
 	_, err := db.Exec(query,
@@ -60,7 +60,7 @@ func UpdateSiteSettings(db *sql.DB, s *SiteSettings) error {
 
 // UpdateMaintenanceMode atualiza especificamente o status do modo de manutenção.
 func UpdateMaintenanceMode(db *sql.DB, enabled bool, message string) error {
-	query := `UPDATE site_settings SET maintenance_enabled = ?, maintenance_message = ? WHERE id = 1`
+	query := `UPDATE site_settings SET maintenance_enabled = $1, maintenance_message = $2 WHERE id = 1`
 	_, err := db.Exec(query, enabled, message)
 	return err
 }

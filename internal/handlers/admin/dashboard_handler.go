@@ -6,13 +6,10 @@ import (
 )
 
 // DashboardData representa os dados a serem exibidos no dashboard do admin.
-
-// DashboardData representa os dados a serem exibidos no dashboard do admin.
 type DashboardData struct {
 	Message string `json:"message"`
 }
 
-// DashboardHandler processa as solicitações para o endpoint /admin/dashboard.
 // DashboardHandler processa as solicitações para o endpoint /admin/dashboard.
 func DashboardHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"net/http"
 	"os"
 
@@ -55,15 +54,15 @@ func main() {
 	config.InitAsaas()
 
 	// Conexão com o banco de dados
-	db, err := database.ConnectMySQL()
+	db, err := database.ConnectPostgres()
 	if err != nil {
 		logger.Log.WithFields(logrus.Fields{
 			"module": "database",
 			"error":  err.Error(),
-		}).Fatal("Erro ao conectar no MySQL")
+		}).Fatal("Erro ao conectar no PostgreSQL")
 	}
 	defer db.Close()
-	logger.Log.Info("Conexão com o banco de dados MySQL estabelecida com sucesso.")
+	logger.Log.Info("Conexão com o banco de dados PostgreSQL estabelecida com sucesso.")
 
 	// Inicializa o provisionador do WHM
 	whmProvisioner, err := provisioning.NewWhmProvisioner()
@@ -84,8 +83,10 @@ func main() {
 
 	r := mux.NewRouter()
 
-	// Aplica o middleware de logging a todas as rotas
+	// Aplica os middlewares a todas as rotas
+	r.Use(middleware.CORSMiddleware)
 	r.Use(middleware.LoggingMiddleware)
+	r.Use(middleware.SubdomainMiddleware)
 
 	// Rota para a documentação do Swagger
 	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
@@ -142,6 +143,10 @@ func main() {
 
 	// Rota para Análise de Deploy (Admin)
 	adminRouter.HandleFunc("/updates/analyze", admin.AnalyzeUpdateHandler()).Methods("POST")
+
+	// Rota para atualizar as configurações do site (Admin)
+	adminRouter.HandleFunc("/settings", middleware.UpdateSettingsHandler).Methods("POST")
+
 
 	// --- Rotas de Webhook (Externas) ---
 	r.HandleFunc("/webhooks/asaas", webhooks.AsaasWebhookHandler(db)).Methods("POST")
