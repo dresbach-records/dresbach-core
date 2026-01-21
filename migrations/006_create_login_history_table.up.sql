@@ -7,5 +7,5 @@ CREATE TABLE IF NOT EXISTS login_history (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_login_history_client_id ON login_history(client_id);
-CREATE INDEX idx_login_history_ip_address ON login_history(ip_address);
+CREATE INDEX IF NOT EXISTS idx_login_history_client_id ON login_history(client_id);
+CREATE INDEX IF NOT EXISTS idx_login_history_ip_address ON login_history(ip_address);

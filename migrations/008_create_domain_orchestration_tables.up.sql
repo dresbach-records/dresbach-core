@@ -1,6 +1,13 @@
 -- Criando os tipos ENUM necessários para o PostgreSQL
-CREATE TYPE domain_type AS ENUM('register', 'transfer', 'existing');
-CREATE TYPE domain_status AS ENUM('pending_payment', 'pending_provisioning', 'active', 'failed', 'cancelled');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'domain_type') THEN
+        CREATE TYPE domain_type AS ENUM('register', 'transfer', 'existing');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'domain_status') THEN
+        CREATE TYPE domain_status AS ENUM('pending_payment', 'pending_provisioning', 'active', 'failed', 'cancelled');
+    END IF;
+END$$;
 
 -- Tabela para rastrear todos os domínios e seu estado atual
 CREATE TABLE IF NOT EXISTS domains (
@@ -31,6 +38,7 @@ CREATE TABLE IF NOT EXISTS domain_events (
 );
 
 -- Trigger para a tabela domains
+DROP TRIGGER IF EXISTS update_domains_updated_at ON domains;
 CREATE TRIGGER update_domains_updated_at
 BEFORE UPDATE ON domains
 FOR EACH ROW

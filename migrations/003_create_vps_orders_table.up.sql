@@ -28,6 +28,7 @@ END;
 $$ language 'plpgsql';
 
 -- Trigger para a tabela vps_orders
+DROP TRIGGER IF EXISTS update_vps_orders_updated_at ON vps_orders;
 CREATE TRIGGER update_vps_orders_updated_at
 BEFORE UPDATE ON vps_orders
 FOR EACH ROW

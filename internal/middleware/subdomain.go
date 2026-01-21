@@ -1,11 +1,9 @@
-
 package middleware
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -74,6 +72,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 			"https://area-do-cliente.dresbachhosting.com.br",
 			"https://checkout.dresbachhosting.com.br",
 			"https://admin.dresbachhosting.com.br",
+			"https://webhook.dresbachhosting.com.br",
 		}
 		origin := r.Header.Get("Origin")
 

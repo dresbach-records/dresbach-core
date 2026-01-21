@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS domain_orders (
 );
 
 -- Trigger para a tabela domain_orders
+DROP TRIGGER IF EXISTS update_domain_orders_updated_at ON domain_orders;
 CREATE TRIGGER update_domain_orders_updated_at
 BEFORE UPDATE ON domain_orders
 FOR EACH ROW
